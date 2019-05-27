@@ -1,4 +1,8 @@
 <SplashScreen>:
+    Label:
+        text: 'Welcome to this demo application for the Group Assignment Tool.'
+        size_hint: (.50,.3)
+        pos_hint: {'center_x':.5, 'center_y':.7}
     Button:
         text: 'Begin'
         size_hint: (.20,.10)
@@ -24,12 +28,13 @@
         size_hint: (.20,.10)
         pos_hint: {'center_x':.5, 'center_y':.1}
         on_press:
-            #app.root.transition.direction = 'left'
-            #app.root.current = app.root.next()
-            #self.text = str(app.q_list[0].ids.weight_slider.value)
-            root.process_dataset()
+            app.root.transition.direction = 'left'
+            app.root.current = app.root.next()
+            root.call_process()
+
     # Strong initialization switch
     ToggleButton:
+        id: strong_toggle
         text: "Strong Initializations"
         group: "init_type"
         allow_no_selection: False
@@ -42,6 +47,7 @@
 
     # Random initialiation switch
     ToggleButton:
+        id: random_toggle
         text: "Random Initializations"
         group: "init_type"
         allow_no_selection: False
@@ -85,7 +91,25 @@
         size_hint: (.1,.06)
         pos_hint: {'center_x':.4, 'center_y':.55}
 
+<ResultScreen>:
+    Label:
+        id: result_label
+        text: 'Processing results...'
+        size_hint: (.50,.30)
+        pos_hint: {'center_x':.5, 'center_y':.7}
 
+    TextInput:
+        id: result_box
+        readonly: True
+        size_hint: (.40,.40)
+        pos_hint: {'center_x':.5, 'center_y':.4}
+    Button:
+        text: 'Restart'
+        size_hint: (.20,.10)
+        pos_hint: {'center_x':.85, 'center_y':.1}
+        on_press:
+            app.root.transition.direction = 'left'
+            app.root.current = app.root.next()
 <Question>:
     Label:
         id: text_label
@@ -106,11 +130,11 @@
     Label:
         text: 'Low'
         size_hint: (.50,.15)
-        pos_hint: {'center_x':.3, 'center_y':.28}
+        pos_hint: {'center_x':.3, 'center_y':.3}
     Label:
         text: 'High'
         size_hint: (.50,.15)
-        pos_hint: {'center_x':.7, 'center_y':.28}
+        pos_hint: {'center_x':.7, 'center_y':.3}
 
     # Activation switch
     ToggleButton:

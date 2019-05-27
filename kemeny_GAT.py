@@ -12,15 +12,13 @@ import pstats, io
 from courseElements import *
 
 class GroupAssign:
-    def __init__(self, student_csv, question_weights, question_types, per_group = 4, mode = 'Normal',
-                name_q = 'Name', n_iter = 15000):
+    def __init__(self, student_csv, question_weights, question_types, per_group = 4,
+                n_iter = 15000, combos = 10000, timelimit = 10, mode = "Strong"):
 
 
         self.student_csv = student_csv
-        self.weighting_csv = weighting_csv
         self.check_delimiter = ";" # delimiter for checkbox questions
         self.per_group = per_group
-        self.rerun = False
 
         self.n_iter = n_iter
         self.initial_ep = 0.05
@@ -29,50 +27,34 @@ class GroupAssign:
         self.conv_thresh = .001
         self.discount = 1
         self.discount = math.pow(.001/self.epsilon, 1/(self.n_iter))
-        #self.discount = self.initial_ep/self.n_iter
+
         # How long to run anytime_run() for until exiting
-        self.timelimit = 30
+        self.timelimit = timelimit
 
         # How many combinations to run in assign_strong_groups()
-        # On a laptop, typically can evaluate ~22,000 combos per second
-        # Warning - for large datasets, will still require long process time
-        self.combinationlimit = 50000
+        self.combinationlimit = combos
 
-        if self.rerun: # reduce combination limit
-            self.combinationlimit = self.combinationlimit // 3
-
+        self.class_state = full_state()
         self.questions = list(question_weights.keys())
         self.question_weights = question_weights
         self.question_types = question_types
 
         self.students = []
-        self.questions = []
-
-        self.mode = mode
 
         self.blocks = ["9L", "9S", "10", "11", "12", "2", "10A", "2A", "3A", "3B", "6A", "6B"]
-
-        self.name_question = name_q
-
-        self.class_state = full_state()
+        self.name_question = "What is your NETID?"
 
         # Stores associated questions for restrictive question types
-        # (ie, for "Which student(s) do you not wish to work for" this would link
-        # that question to the "Names" question)
         self.restrictive_questions = {}
-
-        self.majority_opt = {}
+        self.majority_opt = {"What gender do you identify with?":"Male", \
+                            "What is your ethnicity?":"White or Caucasian"}
 
         self.process_students()
-        self.process_prof()
 
-
-        if len(self.students) > 16:
-            self.default_init_mode = "Strong" # "Random" or "Strong"
+        if mode == "Strong":
+            self.assign_strong_groups()
         else:
-            self.default_init_mode = "Random" # "Random" or "Strong"
-
-        self.initialized = False
+            self.assign_initial_groups()
 
 
 
@@ -121,12 +103,14 @@ class GroupAssign:
     # Processes student response CSV
     def process_students(self):
         response_data = self.read_csv_data(self.student_csv)
-        #use as list so that it's indexable (but no longer tied to dictionary's values)
-        self.questions = list(response_data[0].keys())
 
-        if self.name_question not in self.questions:
-            raise ValueError("Provided name question {} not \
-                            found in student CSV.".format(self.name_question))
+        # Validate that all questions in the master question list are present
+        student_qlist = set(response_data[0].keys())
+        for question in self.questions:
+            if question not in student_qlist:
+                print(student_qlist)
+                raise ValueError("Provided question \"{}\" not found in student data CSV.".format(question))
+
 
         #Creates an empty student object for each student
         self.students = [Student() for i in range(len(response_data))]
@@ -543,10 +527,7 @@ class GroupAssign:
             sumtime = ctime - stime
             avgtime = sumtime / nruns
 
-        print("Max score: " + str(mscore))
-        print("Average time: " + str(avgtime))
         self.class_state = mstate
-        self.output_state('b')
         return mscore
 
     # Swaps two random groups
@@ -694,38 +675,3 @@ class GroupAssign:
 
         group_one.students.remove(i)
         group_two.students.remove(j)
-
-    # Returns minimum score across all groups
-    def get_min_groupscore(self):
-        min_score = float('inf')
-        for group in self.class_state.groups:
-            if group.score < min_score:
-                min_score = group.score
-        return min_score
-
-
-def main():
-    random.seed(1)
-    student_csv = 'c6_optimal_100.csv'
-    weighting_csv = 'c6_optimization_prof.csv'
-    assigner = groupAssign(student_csv, weighting_csv, per_group = 4, mode = 'Normal',
-            name_q = 'What is your NETID?', n_iter = 15000)
-
-    #assigner.anytime_run(timelimit =15)
-    #assigner.output_state('p')
-
-    # pr = cProfile.Profile()
-    # pr.enable()
-    # assigner.teammaker()
-    assigner.assign_strong_groups()
-    sc = assigner.iterate_normal()
-    print(sc)
-    assigner.output_state('b')
-    # s = io.StringIO()
-    # ps = pstats.Stats(pr, stream=s).sort_stats('tottime')
-    # ps.print_stats()
-    # print(s.getvalue())
-
-
-if __name__ == '__main__':
-    main()
