@@ -1,8 +1,11 @@
 <SplashScreen>:
+    # Welcome text
     Label:
-        text: 'Welcome to this demo application for the Group Assignment Tool.'
+        text: 'Welcome to this demo application for the Group Assignment Tool.\nThis app provides an example of generating groups with the Group Assignment Tool.'
+        halign: 'center'
         size_hint: (.50,.3)
         pos_hint: {'center_x':.5, 'center_y':.7}
+    # Begin
     Button:
         text: 'Begin'
         size_hint: (.20,.10)
@@ -11,11 +14,12 @@
             app.root.transition.direction = 'left'
             app.root.current = app.root.next()
 
-<EndScreen>:
+<ParamScreen>:
     default_timelimit: 15
     default_iterations: 10000
     default_combinations: 15000
 
+    # Return to questions
     Button:
         text: 'Review Questions'
         size_hint: (.20,.10)
@@ -23,38 +27,54 @@
         on_press:
             app.root.transition.direction = 'right'
             app.root.current = app.root.previous()
+
+    # Process data
     Button:
         text: 'Process Dataset'
         size_hint: (.20,.10)
-        pos_hint: {'center_x':.5, 'center_y':.1}
+        pos_hint: {'center_x':.85, 'center_y':.1}
         on_press:
             app.root.transition.direction = 'left'
             app.root.current = app.root.next()
             root.call_process()
 
-    # Strong initialization switch
+    # Group size selection
+    Spinner:
+        id: select_per_group
+        text: '4'
+        values: ('2', '3', '4', '5', '6', '7', '8', '9', '10')
+        size_hint: (.11,.08)
+        pos_hint: {'center_x':.5, 'center_y':.1}
+    Label:
+        text: 'Group Size'
+        size_hint: (.20,.10)
+        pos_hint: {'center_x':.5, 'center_y':.2}
+
+    # Initialization switches
     ToggleButton:
         id: strong_toggle
-        text: "Strong Initializations"
+        text: "Strong"
         group: "init_type"
         allow_no_selection: False
         state: 'down'
 
         size_hint: (.20,.10)
-        pos_hint: {'center_x':.4, 'center_y':.7}
+        pos_hint: {'center_x':.2, 'center_y':.8}
         on_press:
             root.init_type_callback(True)
-
-    # Random initialiation switch
     ToggleButton:
         id: random_toggle
-        text: "Random Initializations"
+        text: "Random"
         group: "init_type"
         allow_no_selection: False
         size_hint: (.20,.10)
-        pos_hint: {'center_x':.6, 'center_y':.7}
+        pos_hint: {'center_x':.4, 'center_y':.8}
         on_press:
             root.init_type_callback(False)
+    Label:
+        text: 'Initialization Style'
+        size_hint: (.20,.10)
+        pos_hint: {'center_x':.3, 'center_y':.9}
 
     # Time limit input
     TextInput:
@@ -66,7 +86,11 @@
         input_filter: 'float'
         hint_text: 'Timelimit (s)'
         size_hint: (.1,.06)
-        pos_hint: {'center_x':.6, 'center_y':.55}
+        pos_hint: {'center_x':.4, 'center_y':.55}
+    Label:
+        text: 'Time Limit (s)'
+        size_hint: (.20,.10)
+        pos_hint: {'center_x':.4, 'center_y':.61}
 
     # Number Iterations
     TextInput:
@@ -77,7 +101,11 @@
         input_filter: 'int'
         hint_text: '# Iterations'
         size_hint: (.1,.06)
-        pos_hint: {'center_x':.5, 'center_y':.35}
+        pos_hint: {'center_x':.3, 'center_y':.35}
+    Label:
+        text: '# Iterations'
+        size_hint: (.20,.10)
+        pos_hint: {'center_x':.3, 'center_y':.41}
 
     # Number Combinations
     TextInput:
@@ -89,20 +117,87 @@
         input_filter: 'int'
         hint_text: '# Samples'
         size_hint: (.1,.06)
-        pos_hint: {'center_x':.4, 'center_y':.55}
+        pos_hint: {'center_x':.2, 'center_y':.55}
+    Label:
+        text: '# Samples'
+        size_hint: (.20,.10)
+        pos_hint: {'center_x':.2, 'center_y':.61}
+
+    # Compare to optimal?
+    Label:
+        id: result_label
+        text: 'Compare to optimal groups?'
+        size_hint: (.50,.30)
+        pos_hint: {'center_x':.75, 'center_y':.9}
+    ToggleButton:
+        id: compare_toggle
+        allow_no_selection: False
+        text: 'Yes'
+        group: 'compare_group'
+        state: 'down'
+        size_hint: (.10,.10)
+        pos_hint: {'center_x':.7, 'center_y':.8}
+    ToggleButton:
+        id: no_compare_toggle
+        allow_no_selection: False
+        text: 'No'
+        group: 'compare_group'
+        state: 'normal'
+        size_hint: (.10,.10)
+        pos_hint: {'center_x':.8, 'center_y':.8}
+
+    # Group size selection
+    Spinner:
+        id: select_n_groups
+        text: '8'
+        values: ('5', '6', '7', '8', '9', '10', '11', '12', '13', '14', '15')
+        size_hint: (.11,.08)
+        pos_hint: {'center_x':.75, 'center_y':.5}
+    Label:
+        id: select_n_groups_label
+        text: '# Groups'
+        size_hint: (.20,.10)
+        pos_hint: {'center_x':.75, 'center_y':.6}
 
 <ResultScreen>:
+    # Display score
     Label:
         id: result_label
         text: 'Processing results...'
         size_hint: (.50,.30)
-        pos_hint: {'center_x':.5, 'center_y':.7}
+        pos_hint: {'center_x':.5, 'center_y':.83}
 
+    # Compare to Optimal
+    Label:
+        id: opt_label
+        text: ''
+        halign: 'center'
+        size_hint: (.50,.30)
+        pos_hint: {'center_x':.5, 'center_y':.92}
+
+    # Display result groups
     TextInput:
         id: result_box
         readonly: True
         size_hint: (.40,.40)
-        pos_hint: {'center_x':.5, 'center_y':.4}
+        pos_hint: {'center_x':.5, 'center_y':.6}
+
+    # Collect filename for output
+    TextInput:
+        hint_text: 'Output Filename'
+        id: csv_filename
+        size_hint: (.20, .07)
+        pos_hint: {'center_x':.5, 'center_y':.22}
+
+    # Generate CSV
+    Button:
+        text: 'Generate CSV'
+        size_hint: (.20,.10)
+        pos_hint: {'center_x':.5, 'center_y':.1}
+        on_press:
+            root.make_csv(root.ids.csv_filename.text)
+
+    # Return to splash screen
     Button:
         text: 'Restart'
         size_hint: (.20,.10)
@@ -110,7 +205,9 @@
         on_press:
             app.root.transition.direction = 'left'
             app.root.current = app.root.next()
+
 <Question>:
+    # Question text and type
     Label:
         id: text_label
         text: 'Undefined Question'
@@ -136,28 +233,31 @@
         size_hint: (.50,.15)
         pos_hint: {'center_x':.7, 'center_y':.3}
 
-    # Activation switch
+    # Activation/Deactivation switches
     ToggleButton:
         id: activate_toggle
         allow_no_selection: False
-        text: 'Activate'
+        text: 'Yes'
         group: 'activation_group'
         state: 'down'
         size_hint: (.10,.10)
-        pos_hint: {'center_x':.25, 'center_y':.5}
+        pos_hint: {'center_x':.25, 'center_y':.53}
         on_press:
             root.activate_callback(False)
-    # Deactivation switch
     ToggleButton:
         id: deactivate_toggle
         allow_no_selection: False
-        text: 'Deactivate'
+        text: 'No'
         group: 'activation_group'
         state: 'normal'
         size_hint: (.10,.10)
-        pos_hint: {'center_x':.35, 'center_y':.5}
+        pos_hint: {'center_x':.35, 'center_y':.53}
         on_press:
             root.activate_callback(True)
+    Label:
+        text: 'Use this question?'
+        size_hint: (.20,.15)
+        pos_hint: {'center_x':.3, 'center_y':.63}
 
     # Distribution selection
     Spinner:
@@ -165,7 +265,11 @@
         text: 'Heterogeneous'
         values: ('Heterogeneous', 'Homogeneous')
         size_hint: (.20,.10)
-        pos_hint: {'center_x':.7, 'center_y':.5}
+        pos_hint: {'center_x':.7, 'center_y':.53}
+    Label:
+        text: 'Distribution'
+        size_hint: (.20,.15)
+        pos_hint: {'center_x':.7, 'center_y':.63}
 
     # Weight slider
     Slider:
@@ -176,6 +280,7 @@
         size_hint: (.50,.10)
         pos_hint: {'center_x':.5, 'center_y':.25}
 
+    # Move to next or previous question
     Button:
         id: nquestion_button
         text: 'Next Question'
