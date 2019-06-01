@@ -1,13 +1,14 @@
 
 # Authored by Chris Miller '20
-# To provide a GUI demo of the Group Assignment Tool
+# Provides a GUI demo of the Group Assignment Tool
+# For submission to the Kemeny Prize
 
-from groupAssignmentTool import GroupAssign
+from Group_Assignment/groupAssignmentTool import GroupAssign
 import csv
 import os
+from typing import *
 
 import kivy
-kivy.require('1.10.1')
 
 from kivy.app import App
 from kivy.uix.floatlayout import FloatLayout
@@ -24,51 +25,139 @@ from kivy.uix.textinput import TextInput
 from kivy.uix.checkbox import CheckBox
 from kivy.uix.popup import Popup
 
-# Basic splash screen to start
-class SplashScreen(Screen):
-    def __init__(self, **kwargs):
-        super(SplashScreen, self).__init__(**kwargs)
 
-# Displays results
+class Question(Screen):
+    '''
+    Generic screen for any question
+    Attributes:
+        distrib_active: True if users can modify distribution type
+        opts: Potential repsonses for the question
+    '''
+    def __init__(self, q_text: str, q_type: str, q_opts: List[str], num: int, **kwargs):
+        super(Question, self).__init__(**kwargs)
+        self.distrib_active = True
+
+        self.ids.text_label.text = q_text
+        self.ids.type_label.text = q_type
+        self.opts = q_opts
+
+        self.ids.activate_toggle.group = 'activation_group_' + str(num)
+        self.ids.deactivate_toggle.group = 'activation_group_' + str(num)
+
+        self.parse_type(q_type)
+
+    def activate_callback(self, val: bool):
+        '''
+        Activates/deactivates fields depending on whether or not the question is active
+        Args:
+            val: True if a question is disabled, false else
+        '''
+        if self.distrib_active:
+            self.ids.distrib_spinner.disabled = val
+        self.ids.weight_slider.disabled = val
+
+    def parse_type(self, q_type: str):
+        '''
+        Sets default distribution and determines what users are allowed to modify
+        Args:
+            q_type: Question type, which takes on one of the following values
+                (Identification Question)
+                (Multiple Choice Question)
+                (Checkbox Question)
+                (Isolation Question)
+                (Scheduling Question)
+                (Restrictive Question)
+        '''
+        active_types = ["(Multiple Choice Question)", "(Checkbox Question)"]
+        het_types = ["(Multiple Choice Question)", "(Isolation Question)", "(Identification Question)"]
+        unweighted_types = ["(Identification Question)"]
+        high_weight_types = ["(Isolation Question)"]
+
+        # Set default distribution
+        if q_type not in het_types:
+            self.ids.distrib_spinner.text = 'Homogeneous'
+
+        # Deactivate distribution spinner
+        if q_type not in active_types:
+            self.distrib_active = False
+            self.ids.distrib_spinner.disabled = True
+
+        # Freeze all options
+        if q_type in unweighted_types:
+            self.ids.activate_toggle.disabled = True
+            self.ids.deactivate_toggle.disabled = True
+
+            self.ids.weight_slider.disabled = True
+
+        # Increase weighting
+        if q_type in high_weight_types:
+            self.ids.weight_slider.max *= 4
+            self.ids.weight_slider.value *= 4
+
+class ParamScreen(Screen):
+    '''
+    Allows users to set various GroupAssign parameters
+    '''
+    def __init__(self, **kwargs):
+        super(ParamScreen, self).__init__(**kwargs)
+
+
+    def init_type_callback(self, val: bool):
+        '''
+        Sets various fields inactive or active depending on initialization type
+        Args:
+            val: True if user requests strong initializations, false otherwise
+        '''
+        self.ids.time_limit_input.disabled = val
+        self.ids.combination_input.disabled = not val
+
+    def call_process(self):
+        '''
+        Schedules dataset processing, with half second delay for screen transition
+        '''
+        Clock.schedule_once((self.manager.get_screen(self.manager.current)).process_dataset, .5)
+
 class ResultScreen(Screen):
-    def __init__(self, q_list, param_screen, **kwargs):
+    '''
+    Screen object which displays results and allows file output
+
+    Attributes:
+        q_list: List of question screens
+        param_screen: Parameter setting screen
+        assigner: Holds the GroupAssign object
+        dest_csv: Holds the CSV to write to
+        last_overwrite: Tracks if a user wishes to overwrite an existing file
+
+    '''
+    def __init__(self, q_list: List[Question], param_screen: ParamScreen, **kwargs):
         super(ResultScreen, self).__init__(**kwargs)
         self.q_list = q_list
         self.param_screen = param_screen
         self.assigner = None
         self.dest_csv = None
         self.last_overwrite = None
-    # Sets up and uses GroupAssign object
-    def process_dataset(self, dt):
-        questions = []
+
+
+    def process_dataset(self, dt: float):
+        '''
+        Evaluates question parameters and assignment parameters
+        Creates and uses a GroupAssign object to assign groups
+
+        Args:
+            dt: seconds since call was scheduled, required by kivy clock scheduling
+
+        '''
         param_screen = None
-        # Get parameters and all active questions
-        for screen in self.q_list:
-            if screen.ids.activate_toggle.state == 'down':
-                questions.append(screen)
         param_screen = self.param_screen
 
         assert (param_screen), "Parameter Screen Not Found"
 
-        q_text_list = []
-        q_types = {}
-        q_opts = {}
-        q_weights = {}
         if param_screen.ids.strong_toggle.state == 'down':
             mode = "Strong"
         else:
             mode = "Random"
 
-        for question in questions:
-            q_text = question.ids.text_label.text
-            q_opts[q_text] = question.opts
-            q_weights[q_text] = question.ids.weight_slider.value
-            q_types[q_text] = question.ids.type_label.text
-
-            if question.ids.distrib_spinner.text == 'Homogeneous':
-                q_weights[q_text] = -q_weights[q_text]
-
-            q_text_list.append(q_text)
+        (q_text_list, q_opts, q_weights, q_types) = self.process_questions()
 
         (c_size, per_group, n_iter, combos, timelimit) = self.get_params(param_screen, mode)
 
@@ -89,7 +178,6 @@ class ResultScreen(Screen):
             sc = assigner.iterate_normal(visible=False)
         else:
             sc = assigner.anytime_run()
-
 
         self.ids.result_label.text = "Final class score: {:.2f}".format(sc)
 
@@ -117,8 +205,54 @@ class ResultScreen(Screen):
 
         self.assigner = assigner
 
-    # Pulls iteration count, combination samples, and time limit
-    def get_params(self, instance, mode):
+    def process_questions(self) -> Tuple[List[str], List[List[str]], Dict[str, float], Dict[str, str]]:
+        '''
+        Processes all question screens, evaluating weights and distribution types
+        Args:
+            None
+        Returns:
+            q_text_list: List of activated question texts
+            q_opts: List of activated question response options
+            q_weights: Dictionary of question weights, indexed by question text
+            q_types: Dictionary of question types, indexed by question text
+        '''
+        questions = []
+        q_text_list = []
+        q_types = {}
+        q_opts = {}
+        q_weights = {}
+
+        # Get all active questions
+        for screen in self.q_list:
+            if screen.ids.activate_toggle.state == 'down':
+                questions.append(screen)
+
+        for question in questions:
+            q_text = question.ids.text_label.text
+            q_opts[q_text] = question.opts
+            q_weights[q_text] = question.ids.weight_slider.value
+            q_types[q_text] = question.ids.type_label.text
+
+            if question.ids.distrib_spinner.text == 'Homogeneous':
+                q_weights[q_text] = -q_weights[q_text]
+
+            q_text_list.append(q_text)
+
+        return (q_text_list, q_opts, q_weights, q_types)
+
+    def get_params(self, instance: ParamScreen, mode: str) -> Tuple[int, int, int, int, int]:
+        '''
+        Gets and enforces constraints on various GroupAssign parameters
+        Args:
+            instance: ParamScreen object which stores GroupAssign parameters
+            mode: Initialization mode
+        Returns:
+            c_size: Class size
+            per_group: Number of students per group
+            n_iter: Number of swap attempts to make
+            combos: Number of combinations to sample
+            timelimit: Number of seconds to run for
+        '''
         n_iter = 0
         combos = 0
         timelimit = 0
@@ -133,7 +267,10 @@ class ResultScreen(Screen):
             print("Invalid iteration count, using default value " + \
                     str(instance.default_iterations))
             n_iter = instance.default_iterations
-
+        if n_iter > self.max_iter:
+            n_iter = self.max_iter
+            print("Iteration count greater than maximum allowed (" + str(self.max_iter) + ")")
+            print("Setting iteration count to " + str(self.max_iter) + ".")
         if mode == "Strong": # Get # samples
             try:
                 combos = abs(int(instance.ids.combination_input.text))
@@ -141,6 +278,11 @@ class ResultScreen(Screen):
                 print("Invalid combination count, using default value " + \
                         str(instance.default_combinations))
                 combos = instance.default_combinations
+
+            if combos >  self.max_combo:
+                combos = self.max_combo
+                print("# combination samples greater than maximum allowed (" + str(self.max_combo) + ")")
+                print("Setting # samples to " + str(self.max_combo) + ".")
         else: # Get timelimit
             try:
                 timelimit = abs(int(instance.ids.time_limit_input.text))
@@ -149,11 +291,19 @@ class ResultScreen(Screen):
                         str(instance.default_timelimit))
                 timelimit = instance.default_timelimit
 
+            if timelimit > self.max_time:
+                timelimit = self.max_time
+                print("Time limit greater than maximum allowed (" + str(self.max_time) + ")")
+                print("Setting time limit to " + str(self.max_time) + ".")
+
         return (c_size, per_group, n_iter, combos, timelimit)
 
-    # Generate CSV file for students
-    def make_csv(self, finame):
-
+    def make_csv(self, finame: str):
+        '''
+        Generates a file with student groups
+        Args:
+            finame: The file to output groups to
+        '''
         if not self.last_overwrite == finame and os.path.isfile(finame):
             popup = Popup(title = "File Overwrite Warning",
                 content = Label(text = "File \"" + finame + "\" already exists!" +
@@ -172,96 +322,36 @@ class ResultScreen(Screen):
 
             self.last_overwrite = None
 
-# Collects initialization parameters
-class ParamScreen(Screen):
+class SplashScreen(Screen):
+    '''
+    Screen object which displays an introduction to the demo program
+    Attributes:
+        None
+    '''
     def __init__(self, **kwargs):
-        super(ParamScreen, self).__init__(**kwargs)
-
-    # Set fields active/inactive depending on mode
-    # Val is a boolean, which is true if the user requests strong initializations,
-    # false otherwise
-    def init_type_callback(self, val):
-        self.ids.time_limit_input.disabled = val
-        self.ids.combination_input.disabled = not val
-
-    # Schedule dataset processing, with half second delay for screen transition
-    def call_process(self):
-        Clock.schedule_once((self.manager.get_screen(self.manager.current)).process_dataset, .5)
-
-
-class OptimalScreen(Screen):
-    def __init__(self, **kwargs):
-        super(OptimalScreen, self).__init__(**kwargs)
-
-class Question(Screen):
-    def __init__(self, q_text, q_type, q_opts, num, **kwargs):
-        super(Question, self).__init__(**kwargs)
-        self.distrib_active = True
-
-        self.ids.text_label.text = q_text
-        self.ids.type_label.text = q_type
-        self.opts = q_opts
-
-        self.ids.activate_toggle.group = 'activation_group_' + str(num)
-        self.ids.deactivate_toggle.group = 'activation_group_' + str(num)
-
-        self.parse_type(q_type)
-
-    def activate_callback(self, val):
-        if self.distrib_active:
-            self.ids.distrib_spinner.disabled = val
-        self.ids.weight_slider.disabled = val
-
-    # Set distribution spinner to the correct value and status
-    # Types:
-    # S: (Identification Question)
-    # M: (Multiple Choice Question)
-    # C: (Checkbox Question)
-    # I: (Isolation Question)
-    # Sc: (Scheduling Question)
-    # R: (Restrictive Question)
-    def parse_type(self, q_type):
-        active_types = ["(Multiple Choice Question)", "(Checkbox Question)"]
-        het_types = ["(Multiple Choice Question)", "(Isolation Question)", "(Identification Question)"]
-        unweighted_types = ["(Identification Question)"]
-        high_weight_types = ["(Isolation Question)"]
-
-        # Set default distribution
-        if q_type not in het_types:
-            self.ids.distrib_spinner.text = 'Homogeneous'
-
-        # Deactivate distribution spinner
-        if q_type not in active_types:
-            self.distrib_active = False
-            self.ids.distrib_spinner.disabled = True
-
-        # Freeze all options
-        if q_type in unweighted_types:
-            self.ids.activate_toggle.disabled = True
-            self.ids.deactivate_toggle.disabled = True
-
-            self.ids.weight_slider.disabled = True
-
-        # Increase weighting
-        if q_type in high_weight_types:
-            self.ids.weight_slider.max *= 4
-            self.ids.weight_slider.value *= 4
+        super(SplashScreen, self).__init__(**kwargs)
 
 class KemenyDemoApp(App):
+    '''
+    App class for Kemeny Prize demo
+    '''
     def __init__(self, q_text_list, q_type_list, q_opt_list):
         super(KemenyDemoApp, self).__init__()
         Window.size = (800,400)
         Window.clearcolor = (.259, .446, .296, 1)
 
-        if len(q_text_list) != len(q_type_list):
-            print("Fatal error: Question text list and question type list do not correspond.")
-            exit(1)
+        assert (len(q_text_list) == len(q_type_list)), "Fatal error: Question text list and question type list do not correspond."
 
         self.q_text_list = q_text_list
         self.q_type_list = q_type_list
         self.q_opt_list = q_opt_list
 
     def build(self):
+        '''
+        Builds screen manager object
+        Returns:
+            ScreenManager
+        '''
         sm = ScreenManager()
         q_list = []
 
@@ -282,8 +372,19 @@ class KemenyDemoApp(App):
 
         return sm
 
-# Reads question text and types
-def process_questions(finame):
+def process_questions(finame: str) -> Tuple[List[str], List[str], List[List[str]]]:
+    '''
+    Gets question texts, types, and options from a csv file
+    Args:
+        finame: Filename to read from
+    Returns:
+        q_texts: List of question texts
+        q_types: List of question types
+        q_opts: List of lists of question response options
+    Raises:
+        AssertionError: File has unexpected number of rows (nrows != 3)
+        AssertionError: Lengths of all rows are not equal
+    '''
     valid_types = set(["(Identification Question)", "(Multiple Choice Question)", \
                     "(Checkbox Question)", "(Isolation Question)", "(Scheduling Question)",\
                     "(Restrictive Question)"])
