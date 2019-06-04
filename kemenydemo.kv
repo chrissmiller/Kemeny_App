@@ -223,20 +223,6 @@
         size_hint: (.50,.15)
         pos_hint: {'center_x':.5, 'center_y':.75}
 
-    # Labeling for weight slider
-    Label:
-        text: 'Priority Level:'
-        size_hint: (.50,.15)
-        pos_hint: {'center_x':.5, 'center_y':.32}
-    Label:
-        text: 'Low'
-        size_hint: (.50,.15)
-        pos_hint: {'center_x':.3, 'center_y':.3}
-    Label:
-        text: 'High'
-        size_hint: (.50,.15)
-        pos_hint: {'center_x':.7, 'center_y':.3}
-
     # Activation/Deactivation switches
     ToggleButton:
         id: activate_toggle
@@ -276,11 +262,23 @@
         pos_hint: {'center_x':.7, 'center_y':.63}
 
     # Weight slider
+    Label:
+        text: 'Priority Level:'
+        size_hint: (.50,.15)
+        pos_hint: {'center_x':.5, 'center_y':.32}
+    Label:
+        text: 'Low'
+        size_hint: (.50,.15)
+        pos_hint: {'center_x':.3, 'center_y':.3}
+    Label:
+        text: 'High'
+        size_hint: (.50,.15)
+        pos_hint: {'center_x':.7, 'center_y':.3}
     Slider:
         id: weight_slider
-        min: 0
+        min: 5
         max: 25
-        value: 12.5
+        value: 15
         size_hint: (.50,.10)
         pos_hint: {'center_x':.5, 'center_y':.25}
 

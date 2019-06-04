@@ -1,6 +1,6 @@
 # Group Assignment Tool, version 5.1
 # Built by Chris Miller '20
-# This file customized for use with a demo program
+# This file customized for use with the demo program kdemo.py
 
 import os.path
 import csv
@@ -11,7 +11,7 @@ import time
 import itertools
 from typing import *
 
-from courseElements import *
+from Group_Assignment.courseElements import *
 
 class GroupAssign:
     '''

@@ -3,7 +3,7 @@
 # Provides a GUI demo of the Group Assignment Tool
 # For submission to the Kemeny Prize
 
-from Group_Assignment/groupAssignmentTool import GroupAssign
+from Group_Assignment.groupAssignmentTool import GroupAssign
 import csv
 import os
 from typing import *
@@ -11,11 +11,11 @@ from typing import *
 import kivy
 
 from kivy.app import App
-from kivy.uix.floatlayout import FloatLayout
 from kivy.core.window import Window
 from kivy.clock import Clock
 
 from kivy.uix.screenmanager import ScreenManager, Screen
+from kivy.uix.floatlayout import FloatLayout
 
 from kivy.uix.label import Label
 from kivy.uix.spinner import Spinner
@@ -183,7 +183,7 @@ class ResultScreen(Screen):
 
         result_groups = ""
         for group in assigner.class_state.groups:
-            result_groups += "Group " + str(group.number) + " (score " + str(assigner.score_group(group)) + ") contains students:\n"
+            result_groups += "Group " + str(group.number) + " (score {:.2f}) contains students:\n".format(group.score)
             for student in group.students:
                 result_groups += student.name + "\n"
             result_groups += "\n"
@@ -417,5 +417,5 @@ def process_questions(finame: str) -> Tuple[List[str], List[str], List[List[str]
     return(q_texts, q_types, q_opts)
 
 if __name__ == '__main__':
-    (q_text_list, q_type_list, q_opt_list) = process_questions("qtypes.csv")
+    (q_text_list, q_type_list, q_opt_list) = process_questions("data/qtypes.csv")
     red = KemenyDemoApp(q_text_list, q_type_list, q_opt_list).run()
